@@ -21,15 +21,13 @@ export function useAuth() {
   const { habits, setHabits, addHabit } = useHabitsStore();
   const { completions, setCompletions } = useCompletionsStore();
 
-  const supabase = createClient();
-
   // Initialize auth state
   useEffect(() => {
     const initAuth = async () => {
       setLoading(true);
       try {
         // If Supabase is not configured, stay in anonymous mode
-        if (!isSupabaseConfigured() || !supabase) {
+        if (!isSupabaseConfigured) {
           setUser(null);
 
           // Seed default habits for new users
@@ -45,6 +43,12 @@ export function useAuth() {
               });
             });
           }
+          return;
+        }
+
+        const supabase = createClient();
+        if (!supabase) {
+          setUser(null);
           return;
         }
 
@@ -77,7 +81,10 @@ export function useAuth() {
     initAuth();
 
     // Listen for auth changes only if Supabase is configured
-    if (!isSupabaseConfigured() || !supabase) return;
+    if (!isSupabaseConfigured) return;
+
+    const supabase = createClient();
+    if (!supabase) return;
 
     const {
       data: { subscription },
@@ -104,6 +111,7 @@ export function useAuth() {
   // Migrate anonymous habits/completions to user account
   const migrateAnonymousData = useCallback(
     async (userId: string) => {
+      const supabase = createClient();
       if (!supabase) return;
 
       const anonymousHabits = habits.filter((h) => !h.userId);
@@ -123,7 +131,7 @@ export function useAuth() {
               name: habit.name,
               emoji: habit.emoji,
               color: habit.color,
-              frequency: habit.frequency,
+              frequency: habit.frequency as unknown as Record<string, unknown>,
               reminder_time: habit.reminderTime,
               reminder_message: habit.reminderMessage,
               category: habit.category,
@@ -139,7 +147,7 @@ export function useAuth() {
             (c) => c.habitId === habit.id
           );
 
-          if (habitCompletions.length > 0) {
+          if (habitCompletions.length > 0 && newHabit) {
             const { error: completionError } = await supabase
               .from("completions")
               .insert(
@@ -166,12 +174,13 @@ export function useAuth() {
         toast.error("Failed to sync some habits");
       }
     },
-    [habits, completions, supabase, setHabits, setCompletions]
+    [habits, completions, setHabits, setCompletions]
   );
 
   // Sign in with email
   const signInWithEmail = useCallback(
     async (email: string, password: string) => {
+      const supabase = createClient();
       if (!supabase) {
         toast.error("Supabase is not configured");
         return;
@@ -191,12 +200,13 @@ export function useAuth() {
         setLoading(false);
       }
     },
-    [supabase, setLoading]
+    [setLoading]
   );
 
   // Sign up with email
   const signUpWithEmail = useCallback(
     async (email: string, password: string) => {
+      const supabase = createClient();
       if (!supabase) {
         toast.error("Supabase is not configured");
         return;
@@ -220,11 +230,12 @@ export function useAuth() {
         setLoading(false);
       }
     },
-    [supabase, setLoading]
+    [setLoading]
   );
 
   // Sign in with Google
   const signInWithGoogle = useCallback(async () => {
+    const supabase = createClient();
     if (!supabase) {
       toast.error("Supabase is not configured");
       return;
@@ -242,10 +253,11 @@ export function useAuth() {
       toast.error(err instanceof Error ? err.message : "Sign in failed");
       throw err;
     }
-  }, [supabase]);
+  }, []);
 
   // Sign out
   const signOut = useCallback(async () => {
+    const supabase = createClient();
     if (!supabase) {
       clearUser();
       return;
@@ -258,13 +270,13 @@ export function useAuth() {
       toast.error("Failed to sign out");
       throw err;
     }
-  }, [supabase, clearUser]);
+  }, [clearUser]);
 
   return {
     user,
     isAnonymous,
     isLoading,
-    isSupabaseConfigured: isSupabaseConfigured(),
+    isSupabaseConfigured,
     signInWithEmail,
     signUpWithEmail,
     signInWithGoogle,

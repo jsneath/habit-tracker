@@ -89,10 +89,18 @@ export function HabitModal() {
   const onSubmit = async (data: HabitFormData) => {
     try {
       if (isEditing && editingHabitId) {
-        await updateHabit(editingHabitId, data);
+        await updateHabit(editingHabitId, {
+          ...data,
+          reminderTime: data.reminderTime ?? null,
+          reminderMessage: data.reminderMessage ?? null,
+          category: data.category ?? null,
+        });
       } else {
         await addHabit({
           ...data,
+          reminderTime: data.reminderTime ?? null,
+          reminderMessage: data.reminderMessage ?? null,
+          category: data.category ?? null,
           archived: false,
         });
       }

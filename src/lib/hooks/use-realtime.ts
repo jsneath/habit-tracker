@@ -6,17 +6,17 @@ import { useHabitsStore } from "@/lib/stores/habits-store";
 import { useCompletionsStore } from "@/lib/stores/completions-store";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { Habit, Completion } from "@/types";
-import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 
 export function useRealtime() {
   const { user, isAnonymous } = useUserStore();
   const { setHabits, habits } = useHabitsStore();
   const { setCompletions, completions } = useCompletionsStore();
 
-  const supabase = createClient();
-
   useEffect(() => {
-    if (!isSupabaseConfigured() || !supabase || isAnonymous || !user) return;
+    if (!isSupabaseConfigured || isAnonymous || !user) return;
+
+    const supabase = createClient();
+    if (!supabase) return;
 
     // Subscribe to habits changes
     const habitsChannel = supabase
@@ -29,7 +29,7 @@ export function useRealtime() {
           table: "habits",
           filter: `user_id=eq.${user.id}`,
         },
-        (payload: RealtimePostgresChangesPayload<any>) => {
+        (payload) => {
           if (payload.eventType === "INSERT") {
             const newHabit = formatHabit(payload.new);
             setHabits([...habits, newHabit]);
@@ -38,8 +38,9 @@ export function useRealtime() {
             setHabits(
               habits.map((h) => (h.id === updatedHabit.id ? updatedHabit : h))
             );
-          } else if (payload.eventType === "DELETE") {
-            setHabits(habits.filter((h) => h.id !== payload.old.id));
+          } else if (payload.eventType === "DELETE" && payload.old) {
+            const oldRecord = payload.old as { id: string };
+            setHabits(habits.filter((h) => h.id !== oldRecord.id));
           }
         }
       )
@@ -55,12 +56,13 @@ export function useRealtime() {
           schema: "public",
           table: "completions",
         },
-        (payload: RealtimePostgresChangesPayload<any>) => {
+        (payload) => {
           // Only process if the completion belongs to user's habit
           const habitIds = habits.map((h) => h.id);
 
           if (payload.eventType === "INSERT") {
-            if (habitIds.includes(payload.new.habit_id)) {
+            const newRecord = payload.new as { habit_id: string };
+            if (habitIds.includes(newRecord.habit_id)) {
               const newCompletion = formatCompletion(payload.new);
               setCompletions([...completions, newCompletion]);
             }
@@ -73,8 +75,9 @@ export function useRealtime() {
                 )
               );
             }
-          } else if (payload.eventType === "DELETE") {
-            setCompletions(completions.filter((c) => c.id !== payload.old.id));
+          } else if (payload.eventType === "DELETE" && payload.old) {
+            const oldRecord = payload.old as { id: string };
+            setCompletions(completions.filter((c) => c.id !== oldRecord.id));
           }
         }
       )
@@ -84,34 +87,34 @@ export function useRealtime() {
       supabase.removeChannel(habitsChannel);
       supabase.removeChannel(completionsChannel);
     };
-  }, [user, isAnonymous, habits, completions, supabase, setHabits, setCompletions]);
+  }, [user, isAnonymous, habits, completions, setHabits, setCompletions]);
 }
 
-function formatHabit(data: any): Habit {
+function formatHabit(data: Record<string, unknown>): Habit {
   return {
-    id: data.id,
-    userId: data.user_id,
-    name: data.name,
-    emoji: data.emoji,
-    color: data.color,
-    frequency: data.frequency,
-    reminderTime: data.reminder_time,
-    reminderMessage: data.reminder_message,
-    category: data.category,
-    archived: data.archived,
-    createdAt: data.created_at,
-    updatedAt: data.updated_at,
+    id: data.id as string,
+    userId: data.user_id as string | null,
+    name: data.name as string,
+    emoji: data.emoji as string,
+    color: data.color as string,
+    frequency: data.frequency as Habit["frequency"],
+    reminderTime: data.reminder_time as string | null,
+    reminderMessage: data.reminder_message as string | null,
+    category: data.category as string | null,
+    archived: data.archived as boolean,
+    createdAt: data.created_at as string,
+    updatedAt: data.updated_at as string,
   };
 }
 
-function formatCompletion(data: any): Completion {
+function formatCompletion(data: Record<string, unknown>): Completion {
   return {
-    id: data.id,
-    habitId: data.habit_id,
-    completedAt: data.completed_at,
-    note: data.note,
-    mood: data.mood,
-    photoUrl: data.photo_url,
-    createdAt: data.created_at,
+    id: data.id as string,
+    habitId: data.habit_id as string,
+    completedAt: data.completed_at as string,
+    note: data.note as string | null,
+    mood: data.mood as number | null,
+    photoUrl: data.photo_url as string | null,
+    createdAt: data.created_at as string,
   };
 }

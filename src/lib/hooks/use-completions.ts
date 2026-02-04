@@ -30,11 +30,12 @@ export function useCompletions() {
   const { user, isAnonymous } = useUserStore();
   const { triggerConfetti } = useUIStore();
 
-  const supabase = createClient();
-
   // Fetch completions from Supabase
   const fetchCompletions = useCallback(async () => {
-    if (!isSupabaseConfigured() || !supabase || isAnonymous) return;
+    if (!isSupabaseConfigured || isAnonymous) return;
+
+    const supabase = createClient();
+    if (!supabase) return;
 
     setLoading(true);
     try {
@@ -44,6 +45,7 @@ export function useCompletions() {
         .order("completed_at", { ascending: false });
 
       if (error) throw error;
+      if (!data) return;
 
       const formattedCompletions: Completion[] = data.map((c) => ({
         id: c.id,
@@ -64,13 +66,12 @@ export function useCompletions() {
     } finally {
       setLoading(false);
     }
-  }, [isAnonymous, supabase, setCompletions, setLoading, setError]);
+  }, [isAnonymous, setCompletions, setLoading, setError]);
 
   // Toggle completion with celebration
   const toggleCompletion = useCallback(
     async (habitId: string, date: Date = new Date()) => {
       const dateKey = getDateKey(date);
-      const wasCompleted = isHabitCompletedOnDate(habitId, date);
 
       // Optimistic update
       const added = toggleCompletionInStore(habitId, date);
@@ -89,7 +90,10 @@ export function useCompletions() {
         }
       }
 
-      if (isSupabaseConfigured() && supabase && !isAnonymous && user) {
+      if (isSupabaseConfigured && !isAnonymous && user) {
+        const supabase = createClient();
+        if (!supabase) return added;
+
         try {
           if (added) {
             const { error } = await supabase.from("completions").insert({
@@ -118,9 +122,7 @@ export function useCompletions() {
     [
       isAnonymous,
       user,
-      supabase,
       toggleCompletionInStore,
-      isHabitCompletedOnDate,
       getStreakForHabit,
       triggerConfetti,
     ]
@@ -154,24 +156,28 @@ export function useCompletions() {
         }
       }
 
-      if (isSupabaseConfigured() && supabase && !isAnonymous && user) {
+      if (isSupabaseConfigured && !isAnonymous && user) {
+        const supabase = createClient();
+        if (!supabase) return tempCompletion;
+
         try {
           const { data, error } = await supabase
             .from("completions")
             .insert({
               habit_id: habitId,
               completed_at: dateKey,
-              note: details.note,
-              mood: details.mood,
-              photo_url: details.photoUrl,
+              note: details.note ?? null,
+              mood: details.mood ?? null,
+              photo_url: details.photoUrl ?? null,
             })
             .select()
             .single();
 
           if (error) throw error;
-
-          // Update with real ID
-          updateCompletionInStore(tempCompletion.id, { id: data.id });
+          if (data) {
+            // Update with real ID
+            updateCompletionInStore(tempCompletion.id, { id: data.id });
+          }
           return data;
         } catch (err) {
           // Rollback on error
@@ -186,7 +192,6 @@ export function useCompletions() {
     [
       isAnonymous,
       user,
-      supabase,
       addCompletionToStore,
       updateCompletionInStore,
       deleteCompletionFromStore,
@@ -203,14 +208,17 @@ export function useCompletions() {
       // Optimistic update
       updateCompletionInStore(id, updates);
 
-      if (isSupabaseConfigured() && supabase && !isAnonymous && user) {
+      if (isSupabaseConfigured && !isAnonymous && user) {
+        const supabase = createClient();
+        if (!supabase) return;
+
         try {
           const { error } = await supabase
             .from("completions")
             .update({
-              note: updates.note,
-              mood: updates.mood,
-              photo_url: updates.photoUrl,
+              note: updates.note ?? null,
+              mood: updates.mood ?? null,
+              photo_url: updates.photoUrl ?? null,
             })
             .eq("id", id);
 
@@ -223,7 +231,7 @@ export function useCompletions() {
         }
       }
     },
-    [isAnonymous, user, completions, supabase, updateCompletionInStore]
+    [isAnonymous, user, completions, updateCompletionInStore]
   );
 
   return {

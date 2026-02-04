@@ -28,11 +28,12 @@ export function useHabits() {
 
   const { user, isAnonymous } = useUserStore();
 
-  const supabase = createClient();
-
   // Fetch habits from Supabase
   const fetchHabits = useCallback(async () => {
-    if (!isSupabaseConfigured() || !supabase || isAnonymous) return;
+    if (!isSupabaseConfigured || isAnonymous) return;
+
+    const supabase = createClient();
+    if (!supabase) return;
 
     setLoading(true);
     try {
@@ -42,6 +43,7 @@ export function useHabits() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
+      if (!data) return;
 
       const formattedHabits: Habit[] = data.map((h) => ({
         id: h.id,
@@ -65,7 +67,7 @@ export function useHabits() {
     } finally {
       setLoading(false);
     }
-  }, [isAnonymous, supabase, setHabits, setLoading, setError]);
+  }, [isAnonymous, setHabits, setLoading, setError]);
 
   // Add habit
   const addHabit = useCallback(
@@ -76,7 +78,13 @@ export function useHabits() {
         userId: user?.id ?? null,
       });
 
-      if (isSupabaseConfigured() && supabase && !isAnonymous && user) {
+      if (isSupabaseConfigured && !isAnonymous && user) {
+        const supabase = createClient();
+        if (!supabase) {
+          toast.success("Habit created!");
+          return tempHabit;
+        }
+
         try {
           const { data, error } = await supabase
             .from("habits")
@@ -85,7 +93,7 @@ export function useHabits() {
               name: habitData.name,
               emoji: habitData.emoji,
               color: habitData.color,
-              frequency: habitData.frequency,
+              frequency: habitData.frequency as unknown as Record<string, unknown>,
               reminder_time: habitData.reminderTime,
               reminder_message: habitData.reminderMessage,
               category: habitData.category,
@@ -95,9 +103,10 @@ export function useHabits() {
             .single();
 
           if (error) throw error;
-
-          // Update with real ID from database
-          updateHabitInStore(tempHabit.id, { id: data.id });
+          if (data) {
+            // Update with real ID from database
+            updateHabitInStore(tempHabit.id, { id: data.id });
+          }
           toast.success("Habit created!");
           return data;
         } catch (err) {
@@ -114,7 +123,6 @@ export function useHabits() {
     [
       isAnonymous,
       user,
-      supabase,
       addHabitToStore,
       updateHabitInStore,
       deleteHabitFromStore,
@@ -130,7 +138,13 @@ export function useHabits() {
       // Optimistic update
       updateHabitInStore(id, updates);
 
-      if (isSupabaseConfigured() && supabase && !isAnonymous && user) {
+      if (isSupabaseConfigured && !isAnonymous && user) {
+        const supabase = createClient();
+        if (!supabase) {
+          toast.success("Habit updated!");
+          return;
+        }
+
         try {
           const { error } = await supabase
             .from("habits")
@@ -138,7 +152,7 @@ export function useHabits() {
               name: updates.name,
               emoji: updates.emoji,
               color: updates.color,
-              frequency: updates.frequency,
+              frequency: updates.frequency as unknown as Record<string, unknown>,
               reminder_time: updates.reminderTime,
               reminder_message: updates.reminderMessage,
               category: updates.category,
@@ -158,7 +172,7 @@ export function useHabits() {
         toast.success("Habit updated!");
       }
     },
-    [isAnonymous, user, habits, supabase, updateHabitInStore]
+    [isAnonymous, user, habits, updateHabitInStore]
   );
 
   // Delete habit
@@ -169,7 +183,13 @@ export function useHabits() {
       // Optimistic update
       deleteHabitFromStore(id);
 
-      if (isSupabaseConfigured() && supabase && !isAnonymous && user) {
+      if (isSupabaseConfigured && !isAnonymous && user) {
+        const supabase = createClient();
+        if (!supabase) {
+          toast.success("Habit deleted");
+          return;
+        }
+
         try {
           const { error } = await supabase.from("habits").delete().eq("id", id);
 
@@ -185,7 +205,7 @@ export function useHabits() {
         toast.success("Habit deleted");
       }
     },
-    [isAnonymous, user, habits, supabase, deleteHabitFromStore, addHabitToStore]
+    [isAnonymous, user, habits, deleteHabitFromStore, addHabitToStore]
   );
 
   // Get habits with completion data
