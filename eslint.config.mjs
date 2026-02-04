@@ -14,9 +14,11 @@ export default [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
     rules: {
-      "@typescript-eslint/no-unused-vars": "off", // ← This disables the blocking rule
-      // Optional: Add more rules later, e.g.:
-      // "no-console": "warn",
+      // Temporarily disable to unblock build (remove or set to "warn" later)
+      "@typescript-eslint/no-unused-vars": "off",
+
+      // Optional: Fix the React Hooks warning you saw
+      "react-hooks/exhaustive-deps": "warn",
     },
   },
 ];
