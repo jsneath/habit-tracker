@@ -36,12 +36,13 @@ const isHabitScheduledForDate = (habit: Habit, date: Date): boolean => {
       return frequency.days?.includes(dayOfWeek) ?? false;
     case "monthly":
       return frequency.days?.includes(dayOfMonth) ?? false;
-    case "custom":
+    case "custom": {
       if (!frequency.interval || !habit.createdAt) return false;
       const startDate = new Date(habit.createdAt);
       const diffTime = Math.abs(date.getTime() - startDate.getTime());
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
       return diffDays % frequency.interval === 0;
+    }
     default:
       return false;
   }

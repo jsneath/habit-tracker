@@ -1,12 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+
+  // TEMPORARY: Ignore TypeScript errors during builds to unblock deploys
+  // TODO: Remove once all type issues are fixed
   typescript: {
     ignoreBuildErrors: true,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+
   images: {
     remotePatterns: [
       {
@@ -16,6 +17,7 @@ const nextConfig = {
       },
     ],
   },
+
   headers: async () => [
     {
       source: "/(.*)",
@@ -50,4 +52,4 @@ const nextConfig = {
   ],
 };
 
-module.exports = nextConfig;
+export default nextConfig;
