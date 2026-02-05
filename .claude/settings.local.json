@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npx vercel:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nFix build errors for deployment\n\n- Add missing ''control'' to useForm destructuring in habit-modal.tsx\n- Move migrateAnonymousData callback before useEffect to fix initialization order in use-auth.ts\n- Add missing Tailwind theme colors \\(border, background, primary, etc.\\) for CSS variable support\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(set NEXT_TURBOPACK=0)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nDisable Turbopack for Vercel builds\n\nUse webpack bundler instead to fix build hanging issue\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit:*)"
+    ]
+  }
+}
