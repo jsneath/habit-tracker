@@ -15,6 +15,75 @@ export function useAuth() {
   const { habits, setHabits, addHabit } = useHabitsStore();
   const { completions, setCompletions } = useCompletionsStore();
 
+  // Migrate anonymous habits/completions to user account
+  const migrateAnonymousData = useCallback(
+    async (userId: string) => {
+      const supabase = createClient();
+      if (!supabase) return;
+
+      const anonymousHabits = habits.filter((h) => !h.userId);
+      const anonymousCompletions = completions.filter((c) =>
+        anonymousHabits.some((h) => h.id === c.habitId),
+      );
+
+      if (anonymousHabits.length === 0) return;
+
+      try {
+        // Insert habits with new user_id
+        for (const habit of anonymousHabits) {
+          const { data: newHabit, error: habitError } = await supabase
+            .from("habits")
+            .insert({
+              user_id: userId,
+              name: habit.name,
+              emoji: habit.emoji,
+              color: habit.color,
+              frequency: habit.frequency as unknown as Record<string, unknown>,
+              reminder_time: habit.reminderTime,
+              reminder_message: habit.reminderMessage,
+              category: habit.category,
+              archived: habit.archived,
+            })
+            .select()
+            .single();
+
+          if (habitError) throw habitError;
+
+          // Insert completions for this habit
+          const habitCompletions = anonymousCompletions.filter(
+            (c) => c.habitId === habit.id,
+          );
+
+          if (habitCompletions.length > 0 && newHabit) {
+            const { error: completionError } = await supabase
+              .from("completions")
+              .insert(
+                habitCompletions.map((c) => ({
+                  habit_id: newHabit.id,
+                  completed_at: c.completedAt,
+                  note: c.note,
+                  mood: c.mood,
+                  photo_url: c.photoUrl,
+                })),
+              );
+
+            if (completionError) throw completionError;
+          }
+        }
+
+        // Clear local anonymous data
+        setHabits([]);
+        setCompletions([]);
+
+        toast.success("Your habits have been synced to your account!");
+      } catch (err) {
+        console.error("Migration error:", err);
+        toast.error("Failed to sync some habits");
+      }
+    },
+    [habits, completions, setHabits, setCompletions],
+  );
+
   // Initialize auth state
   useEffect(() => {
     const initAuth = async () => {
@@ -100,86 +169,7 @@ export function useAuth() {
     return () => {
       subscription.unsubscribe();
     };
-  }, [
-    // All dependencies that are used inside the effect
-    addHabit,
-    clearUser,
-    habits.length,
-    isSupabaseConfigured,
-    migrateAnonymousData,
-    setLoading,
-    setUser,
-    // Note: createClient() is called inside, but we include it for completeness
-  ]);
-
-  // Migrate anonymous habits/completions to user account
-  const migrateAnonymousData = useCallback(
-    async (userId: string) => {
-      const supabase = createClient();
-      if (!supabase) return;
-
-      const anonymousHabits = habits.filter((h) => !h.userId);
-      const anonymousCompletions = completions.filter((c) =>
-        anonymousHabits.some((h) => h.id === c.habitId),
-      );
-
-      if (anonymousHabits.length === 0) return;
-
-      try {
-        // Insert habits with new user_id
-        for (const habit of anonymousHabits) {
-          const { data: newHabit, error: habitError } = await supabase
-            .from("habits")
-            .insert({
-              user_id: userId,
-              name: habit.name,
-              emoji: habit.emoji,
-              color: habit.color,
-              frequency: habit.frequency as unknown as Record<string, unknown>,
-              reminder_time: habit.reminderTime,
-              reminder_message: habit.reminderMessage,
-              category: habit.category,
-              archived: habit.archived,
-            })
-            .select()
-            .single();
-
-          if (habitError) throw habitError;
-
-          // Insert completions for this habit
-          const habitCompletions = anonymousCompletions.filter(
-            (c) => c.habitId === habit.id,
-          );
-
-          if (habitCompletions.length > 0 && newHabit) {
-            const { error: completionError } = await supabase
-              .from("completions")
-              .insert(
-                habitCompletions.map((c) => ({
-                  habit_id: newHabit.id,
-                  completed_at: c.completedAt,
-                  note: c.note,
-                  mood: c.mood,
-                  photo_url: c.photoUrl,
-                })),
-              );
-
-            if (completionError) throw completionError;
-          }
-        }
-
-        // Clear local anonymous data
-        setHabits([]);
-        setCompletions([]);
-
-        toast.success("Your habits have been synced to your account!");
-      } catch (err) {
-        console.error("Migration error:", err);
-        toast.error("Failed to sync some habits");
-      }
-    },
-    [habits, completions, setHabits, setCompletions],
-  );
+  }, [addHabit, clearUser, habits.length, migrateAnonymousData, setLoading, setUser]);
 
   // Sign in with email
   const signInWithEmail = useCallback(

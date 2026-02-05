@@ -57,6 +57,7 @@ export function HabitModal() {
     setValue,
     watch,
     reset,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<HabitFormData>({
     resolver: zodResolver(habitSchema),
