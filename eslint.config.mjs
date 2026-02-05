@@ -1,24 +1,45 @@
 // eslint.config.mjs
-import { FlatCompat } from "@eslint/eslintrc";
-import { dirname } from "path";
-import { fileURLToPath } from "url";
+import js from "@eslint/js";
+import tsEslint from "typescript-eslint";
+import reactHooks from "eslint-plugin-react-hooks";
+import nextPlugin from "@next/eslint-plugin-next";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
-
-export default [
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+export default tsEslint.config(
+  js.configs.recommended,
+  ...tsEslint.configs.recommended, // includes type-aware rules
   {
+    plugins: {
+      "react-hooks": reactHooks,
+      "@next/next": nextPlugin,
+    },
     rules: {
-      // Temporarily disable to unblock build (remove or set to "warn" later)
-      "@typescript-eslint/no-unused-vars": "off",
+      ...reactHooks.configs.recommended.rules,
+      ...nextPlugin.configs.recommended.rules,
+      ...nextPlugin.configs["core-web-vitals"].rules,
 
-      // Optional: Fix the React Hooks warning you saw
+      // Your overrides – disable or warn as needed
+      "@typescript-eslint/no-unused-vars": "off", // or "warn"
       "react-hooks/exhaustive-deps": "warn",
     },
   },
-];
+  {
+    ignores: ["node_modules/**", ".next/**", "out/**", "build/**"],
+  },
+  {
+    files: ["public/sw.js"],
+    languageOptions: {
+      globals: {
+        self: "readonly",
+        caches: "readonly",
+        fetch: "readonly",
+        clients: "readonly",
+        Response: "readonly",
+        URL: "readonly",
+        console: "readonly",
+      },
+    },
+    rules: {
+      "no-undef": "error", // still enforce other undefs if any
+    },
+  },
+);

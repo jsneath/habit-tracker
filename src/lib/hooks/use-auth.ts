@@ -9,14 +9,8 @@ import { DEFAULT_HABITS } from "@/types";
 import { toast } from "sonner";
 
 export function useAuth() {
-  const {
-    user,
-    isAnonymous,
-    isLoading,
-    setUser,
-    setLoading,
-    clearUser,
-  } = useUserStore();
+  const { user, isAnonymous, isLoading, setUser, setLoading, clearUser } =
+    useUserStore();
 
   const { habits, setHabits, addHabit } = useHabitsStore();
   const { completions, setCompletions } = useCompletionsStore();
@@ -106,7 +100,17 @@ export function useAuth() {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [
+    // All dependencies that are used inside the effect
+    addHabit,
+    clearUser,
+    habits.length,
+    isSupabaseConfigured,
+    migrateAnonymousData,
+    setLoading,
+    setUser,
+    // Note: createClient() is called inside, but we include it for completeness
+  ]);
 
   // Migrate anonymous habits/completions to user account
   const migrateAnonymousData = useCallback(
@@ -116,7 +120,7 @@ export function useAuth() {
 
       const anonymousHabits = habits.filter((h) => !h.userId);
       const anonymousCompletions = completions.filter((c) =>
-        anonymousHabits.some((h) => h.id === c.habitId)
+        anonymousHabits.some((h) => h.id === c.habitId),
       );
 
       if (anonymousHabits.length === 0) return;
@@ -144,7 +148,7 @@ export function useAuth() {
 
           // Insert completions for this habit
           const habitCompletions = anonymousCompletions.filter(
-            (c) => c.habitId === habit.id
+            (c) => c.habitId === habit.id,
           );
 
           if (habitCompletions.length > 0 && newHabit) {
@@ -157,7 +161,7 @@ export function useAuth() {
                   note: c.note,
                   mood: c.mood,
                   photo_url: c.photoUrl,
-                }))
+                })),
               );
 
             if (completionError) throw completionError;
@@ -174,7 +178,7 @@ export function useAuth() {
         toast.error("Failed to sync some habits");
       }
     },
-    [habits, completions, setHabits, setCompletions]
+    [habits, completions, setHabits, setCompletions],
   );
 
   // Sign in with email
@@ -200,7 +204,7 @@ export function useAuth() {
         setLoading(false);
       }
     },
-    [setLoading]
+    [setLoading],
   );
 
   // Sign up with email
@@ -230,7 +234,7 @@ export function useAuth() {
         setLoading(false);
       }
     },
-    [setLoading]
+    [setLoading],
   );
 
   // Sign in with Google
@@ -276,7 +280,6 @@ export function useAuth() {
     user,
     isAnonymous,
     isLoading,
-    isSupabaseConfigured,
     signInWithEmail,
     signUpWithEmail,
     signInWithGoogle,

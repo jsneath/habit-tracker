@@ -28,8 +28,20 @@ import { habitSchema, type HabitFormData } from "@/lib/validations/habit";
 import { HABIT_COLORS } from "@/lib/utils";
 import { FrequencySelector } from "./frequency-selector";
 import { EmojiPicker } from "./emoji-picker";
+import { useWatch } from "react-hook-form";
 
-const COMMON_EMOJIS = ["✅", "💪", "📚", "🏃", "💧", "🧘", "💤", "🥗", "✍️", "🎯"];
+const COMMON_EMOJIS = [
+  "✅",
+  "💪",
+  "📚",
+  "🏃",
+  "💧",
+  "🧘",
+  "💤",
+  "🥗",
+  "✍️",
+  "🎯",
+];
 
 export function HabitModal() {
   const { isHabitModalOpen, editingHabitId, closeHabitModal } = useUIStore();
@@ -110,9 +122,9 @@ export function HabitModal() {
     }
   };
 
-  const selectedEmoji = watch("emoji");
-  const selectedColor = watch("color");
-  const frequency = watch("frequency");
+  const selectedEmoji = useWatch({ control, name: "emoji" });
+  const selectedColor = useWatch({ control, name: "color" });
+  const frequency = useWatch({ control, name: "frequency" });
 
   return (
     <Dialog open={isHabitModalOpen} onOpenChange={closeHabitModal}>
@@ -213,7 +225,11 @@ export function HabitModal() {
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Saving..." : isEditing ? "Save Changes" : "Create Habit"}
+              {isSubmitting
+                ? "Saving..."
+                : isEditing
+                  ? "Save Changes"
+                  : "Create Habit"}
             </Button>
           </DialogFooter>
         </form>
